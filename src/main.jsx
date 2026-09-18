@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { uploadArtworkToDrive } from './services/driveService';
 import { createRoot } from "react-dom/client";
 import {
   ArrowLeft, Check, ChevronRight, ImagePlus, LogIn, LogOut,
@@ -6,7 +7,7 @@ import {
 } from "lucide-react";
 import "./styles.css";
 
-const DEMO_ADMIN_PASSWORD = "artist123";
+const DEMO_ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD;
 
 const starterCategories = [
   {
@@ -306,32 +307,96 @@ function CategoryPage({ category, admin, onBack, onSelect, onDelete, onToggleSol
   );
 }
 
-function ArtworkForm({ onClose, onSave }) {
-  const [form, setForm] = useState({ title: "", description: "", price: "", sold: false, image: "" });
+function ArtworkForm({ categoryId, onClose, onSave }) {
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [price, setPrice] = useState('');
+  const [file, setFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
-  function handleFile(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setForm(f => ({ ...f, image: reader.result }));
-    reader.readAsDataURL(file);
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!file) {
+      alert("Please select an image file to upload.");
+      return;
+    }
+
+    setUploading(true);
+
+    try {
+      // 1. Upload to Google Drive via your Apps Script backend
+      const driveImageUrl = await uploadArtworkToDrive(file);
+
+      // 2. Save the artwork with the Google Drive image URL
+      onSave({
+        id: Date.now(),
+        title,
+        description,
+        price: Number(price),
+        image: driveImageUrl, // Permanent Google Drive link!
+        sold: false
+      });
+
+      onClose();
+    } catch (err) {
+      console.error("Upload failed:", err);
+      alert("Failed to upload image to Google Drive. Check console for details.");
+    } finally {
+      setUploading(false);
+    }
   }
 
   return (
     <div className="overlay">
       <div className="form-modal animate-in">
-        <button className="close-button" onClick={onClose}><X size={18}/></button>
-        <span className="eyebrow">Studio Archive</span>
         <h2>Add New Artwork</h2>
-        <div className="upload-zone">
-          {form.image ? <img src={form.image} alt="Preview"/> : <div className="upload-placeholder"><ImagePlus size={32}/><span>Upload high-res photo</span></div>}
-          <input type="file" accept="image/*" onChange={handleFile}/>
-        </div>
-        <label>Title<input value={form.title} onChange={e => setForm({...form,title:e.target.value})} placeholder="e.g. Moonlit Garden"/></label>
-        <label>Description<textarea rows="3" value={form.description} onChange={e => setForm({...form,description:e.target.value})} placeholder="The story or inspiration behind this piece..."/></label>
-        <label>Price (₹)<input type="number" value={form.price} onChange={e => setForm({...form,price:e.target.value})} placeholder="2800"/></label>
-        <label className="checkbox"><input type="checkbox" checked={form.sold} onChange={e => setForm({...form,sold:e.target.checked})}/> Mark as sold out</label>
-        <button className="primary-button wide" disabled={!form.image || !form.title} onClick={() => onSave(form)}>Publish to Gallery</button>
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label>Artwork Title</label>
+            <input 
+              type="text" 
+              value={title} 
+              onChange={e => setTitle(e.target.value)} 
+              required 
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Description</label>
+            <textarea 
+              value={description} 
+              onChange={e => setDescription(e.target.value)} 
+              required 
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Price (₹)</label>
+            <input 
+              type="number" 
+              value={price} 
+              onChange={e => setPrice(e.target.value)} 
+              required 
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Select Image File</label>
+            <input 
+              type="file" 
+              accept="image/*" 
+              onChange={e => setFile(e.target.files[0])} 
+              required 
+            />
+          </div>
+
+          <div className="form-actions">
+            <button type="button" onClick={onClose} disabled={uploading}>Cancel</button>
+            <button type="submit" className="primary-button" disabled={uploading}>
+              {uploading ? "Uploading to Drive..." : "Save Artwork"}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
@@ -374,7 +439,7 @@ function LoginModal({ onClose, onSuccess }) {
         <input autoFocus type="password" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>e.key==="Enter"&&login()} placeholder="Password"/>
         {error && <small className="error">{error}</small>}
         <button className="primary-button wide" onClick={login}>Enter Studio</button>
-        <small className="demo-hint">Demo Password: <b>{DEMO_ADMIN_PASSWORD}</b></small>
+        <small className="demo-hint">For Password: <b>Contact to Admin</b></small>
       </div>
     </div>
   );
@@ -434,6 +499,7 @@ function ArtworkModal({ artwork, onClose }) {
             <img 
               src={artwork.image} 
               alt={artwork.title} 
+              referrerPolicy="no-referrer"
               style={{ 
                 transform: `scale(${zoom}) translate(${position.x / zoom}px, ${position.y / zoom}px)`,
                 transition: isDragging ? 'none' : 'transform 0.1s ease-out'
