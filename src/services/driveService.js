@@ -29,21 +29,17 @@ export async function uploadArtworkToDrive(fileObject) {
 
     const textResponse = await response.text();
     
-    // Attempt to parse JSON, but if Google returns HTML/text warning, 
-    // construct the fallback direct view URL using the file name or timestamp 
-    // since we know the Apps Script successfully created it in the Drive folder.
     try {
       const result = JSON.parse(textResponse);
-      if (result.url) return result.url;
+      if (result.url) {
+        return result.url; // This is the permanent Google Drive URL
+      } else {
+        throw new Error(result.error || "Upload failed from server response.");
+      }
     } catch (e) {
-      // Google Apps Script HTML redirect fallback:
-      // If it uploaded to the folder successfully, we can look up or default gracefully.
-      console.warn("Handled non-JSON script response safely.");
+      console.error("Non-JSON response received from Apps Script. Check deployment permissions (Who has access -> Anyone).", textResponse);
+      throw new Error("Failed to upload image: Server returned HTML instead of JSON.");
     }
-
-    // Fallback: if the script ran and uploaded, return a placeholder or local success indicator 
-    // while your Google Drive folder captures the real file.
-    return URL.createObjectURL(fileObject);
 
   } catch (err) {
     console.error("Google Drive upload error:", err);
