@@ -1,12 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { uploadArtworkToDrive } from './services/driveService';
 import { createRoot } from "react-dom/client";
 import {
-  ArrowLeft, Check, ChevronRight, ImagePlus, LogIn, LogOut, Minus,
-  Pencil, Plus, Search, ShoppingBag, Sparkles, Trash2, X, ZoomIn, ZoomOut
+  ArrowLeft, Check, ChevronRight, ImagePlus, LogIn, LogOut,
+  Pencil, Plus, Search, ShoppingBag, Sparkles, Trash2, X, ZoomIn, ZoomOut, Filter
 } from "lucide-react";
 import "./styles.css";
 
-const DEMO_ADMIN_PASSWORD = "artist123";
+const DEMO_ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD;
 
 const starterCategories = [
   {
@@ -134,22 +135,22 @@ function App() {
     <div className="app">
       <header className="site-header">
         <div className="brand" onClick={() => setActiveCategory(null)}>
-          <img src="/logo.png" alt="Artist logo" onError={(e) => e.currentTarget.style.display = "none"} />
+          <img src="/logo.png" alt="Artist logo" />
           <div className="brand-fallback">
             <span className="brand-script">Impressions By Swati</span>
-            <span className="brand-sub">ORIGINAL ART • EST. 1998</span>
+            <span className="brand-sub">ORIGINAL FINE ART • EST. 1998</span>
           </div>
         </div>
 
         <div className="header-actions">
           <div className="search-box">
-            <Search size={17} />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search artwork..." />
+            <Search size={16} />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search gallery..." />
           </div>
           {admin ? (
-            <button className="admin-pill" onClick={() => setAdmin(false)}><LogOut size={16}/> Exit Admin</button>
+            <button className="admin-pill active" onClick={() => setAdmin(false)}><LogOut size={15}/> Exit Admin</button>
           ) : (
-            <button className="icon-button" title="Admin login" onClick={() => setLoginOpen(true)}><LogIn size={19}/></button>
+            <button className="icon-button" title="Admin login" onClick={() => setLoginOpen(true)}><LogIn size={18}/></button>
           )}
         </div>
       </header>
@@ -161,18 +162,18 @@ function App() {
           <>
             <section className="hero">
               <div className="hero-copy">
-                <span className="eyebrow"><Sparkles size={15}/> Handmade • Original • One of a Kind</span>
+                <span className="eyebrow"><Sparkles size={14}/> Curated Collection</span>
                 <h1>Art that makes<br/><em>space feel alive.</em></h1>
-                <p>Explore a collection of thoughtful, handmade artworks created to bring warmth, character and a little wonder into your home.</p>
-                <div className="hero-note"><span></span> Every piece is made with love and carries its own story.</div>
+                <p>Explore a collection of thoughtful, handmade artworks created to bring warmth, character, and quiet wonder into your sanctuary.</p>
+                <div className="hero-note"><span></span> Every piece is original and carries its own distinct narrative.</div>
               </div>
               <div className="hero-art">
                 <div className="arch">
-                  <img src={allArt[0]?.image} alt="" />
+                  <img src={allArt[0]?.image || "https://images.unsplash.com/photo-1549490349-8643362247b5?auto=format&fit=crop&w=1200&q=85"} alt="Featured Artwork" />
                 </div>
                 <div className="hero-card">
                   <strong>{allArt.length}+</strong>
-                  <span>original artworks</span>
+                  <span>Original Artworks</span>
                 </div>
               </div>
             </section>
@@ -180,10 +181,10 @@ function App() {
             <section className="section">
               <div className="section-heading">
                 <div>
-                  <span className="eyebrow">Explore the collection</span>
+                  <span className="eyebrow">Portfolios</span>
                   <h2>Browse by category</h2>
                 </div>
-                <span className="collection-count">{categories.length} collections</span>
+                <span className="collection-count">{categories.length} active collections</span>
               </div>
 
               <div className="category-grid">
@@ -207,9 +208,11 @@ function App() {
       </main>
 
       <footer>
-        <div className="footer-brand">Impressions by Swati</div>
-        <p>Original artwork, thoughtfully made.</p>
-        <span>© 2026 All rights reserved.</span>
+        <div className="footer-content">
+          <div className="footer-brand">Impressions by Swati</div>
+          <p>Original handmade artwork, crafted with intention.</p>
+          <span>© 2026 Swati Gallery. All rights reserved.</span>
+        </div>
       </footer>
 
       {selectedArt && (
@@ -234,13 +237,13 @@ function CategoryCard({ category, index, onClick }) {
   return (
     <button className={`category-card card-${index % 3}`} onClick={onClick}>
       <div className="category-cover">
-        {cover ? <img src={cover} alt={category.name}/> : <div className="empty-cover"><Sparkles size={35}/></div>}
+        {cover ? <img src={cover} alt={category.name}/> : <div className="empty-cover"><Sparkles size={32}/></div>}
         <span className="art-count">{category.artworks.length} {category.artworks.length === 1 ? "piece" : "pieces"}</span>
       </div>
       <div className="category-info">
         <span className="category-number">0{index + 1}</span>
-        <div><h3>{category.name}</h3><p>{category.description || "A collection of original handmade art."}</p></div>
-        <ChevronRight className="arrow" size={21}/>
+        <div><h3>{category.name}</h3><p>{category.description || "A curated series of original handmade pieces."}</p></div>
+        <div className="arrow-wrapper"><ChevronRight size={18}/></div>
       </div>
     </button>
   );
@@ -250,36 +253,53 @@ function CategoryPage({ category, admin, onBack, onSelect, onDelete, onToggleSol
   const [uploadOpen, setUploadOpen] = useState(false);
   return (
     <section className="category-page">
-      <button className="back-button" onClick={onBack}><ArrowLeft size={18}/> All collections</button>
+      <button className="back-button" onClick={onBack}><ArrowLeft size={16}/> All Collections</button>
       <div className="category-title">
-        <div><span className="eyebrow">Collection</span><h1>{category.name}</h1><p>{category.description}</p></div>
-        {admin && <button className="primary-button" onClick={() => setUploadOpen(true)}><Plus size={18}/> Add artwork</button>}
+        <div>
+          <span className="eyebrow">Exhibition</span>
+          <h1>{category.name}</h1>
+          <p>{category.description}</p>
+        </div>
+        {admin && <button className="primary-button" onClick={() => setUploadOpen(true)}><Plus size={16}/> Add Artwork</button>}
       </div>
 
       {category.artworks.length ? (
         <div className="art-grid">
-          {category.artworks.map((art, i) => (
+          {category.artworks.map((art) => (
             <article className="art-card" key={art.id}>
-              <button className="art-image-button" onClick={() => onSelect(art)}>
+              <div className="art-image-container" onClick={() => onSelect(art)}>
                 <img src={art.image} alt={art.title}/>
-                <span className={`sold-badge ${art.sold ? "sold" : ""}`}>{art.sold ? "SOLD OUT" : "AVAILABLE"}</span>
-                <span className="view-art">View artwork <ZoomIn size={16}/></span>
-              </button>
+                <span className={`status-pill ${art.sold ? "sold" : "available"}`}>{art.sold ? "Sold Out" : "Available"}</span>
+                <div className="image-overlay-action">
+                  <span>View Details <ZoomIn size={15}/></span>
+                </div>
+              </div>
               <div className="art-details">
-                <div><h3>{art.title}</h3><p>{art.description}</p></div>
-                <div className="price">{art.sold ? "Sold" : `₹${Number(art.price || 0).toLocaleString("en-IN")}`}</div>
+                <div>
+                  <h3>{art.title}</h3>
+                  <p>{art.description}</p>
+                </div>
+                <div className="price">{art.sold ? <span className="sold-label">Sold</span> : `₹${Number(art.price || 0).toLocaleString("en-IN")}`}</div>
               </div>
               {admin && (
                 <div className="admin-art-actions">
-                  <button onClick={() => onToggleSold(category.id, art.id)}>{art.sold ? <Check size={15}/> : <ShoppingBag size={15}/>} {art.sold ? "Mark available" : "Mark sold"}</button>
-                  <button className="danger" onClick={() => onDelete(category.id, art.id)}><Trash2 size={15}/> Delete</button>
+                  <button onClick={() => onToggleSold(category.id, art.id)}>
+                    {art.sold ? <Check size={14}/> : <ShoppingBag size={14}/>} 
+                    {art.sold ? "Mark Available" : "Mark Sold"}
+                  </button>
+                  <button className="danger" onClick={() => onDelete(category.id, art.id)}><Trash2 size={14}/> Delete</button>
                 </div>
               )}
             </article>
           ))}
         </div>
       ) : (
-        <div className="empty-state"><ImagePlus size={40}/><h3>No artworks yet</h3><p>Add the first piece to this collection.</p>{admin && <button className="primary-button" onClick={() => setUploadOpen(true)}><Plus size={18}/> Add artwork</button>}</div>
+        <div className="empty-state">
+          <ImagePlus size={40}/>
+          <h3>No artworks found</h3>
+          <p>This collection is currently empty. Add the first piece to showcase.</p>
+          {admin && <button className="primary-button" onClick={() => setUploadOpen(true)}><Plus size={16}/> Add Artwork</button>}
+        </div>
       )}
 
       {uploadOpen && <ArtworkForm onClose={() => setUploadOpen(false)} onSave={(art) => { onAdd(category.id, art); setUploadOpen(false); }} />}
@@ -287,32 +307,96 @@ function CategoryPage({ category, admin, onBack, onSelect, onDelete, onToggleSol
   );
 }
 
-function ArtworkForm({ onClose, onSave }) {
-  const [form, setForm] = useState({ title: "", description: "", price: "", sold: false, image: "" });
+function ArtworkForm({ categoryId, onClose, onSave }) {
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [price, setPrice] = useState('');
+  const [file, setFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
-  function handleFile(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setForm(f => ({ ...f, image: reader.result }));
-    reader.readAsDataURL(file);
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!file) {
+      alert("Please select an image file to upload.");
+      return;
+    }
+
+    setUploading(true);
+
+    try {
+      // 1. Upload to Google Drive via your Apps Script backend
+      const driveImageUrl = await uploadArtworkToDrive(file);
+
+      // 2. Save the artwork with the Google Drive image URL
+      onSave({
+        id: Date.now(),
+        title,
+        description,
+        price: Number(price),
+        image: driveImageUrl, // Permanent Google Drive link!
+        sold: false
+      });
+
+      onClose();
+    } catch (err) {
+      console.error("Upload failed:", err);
+      alert("Failed to upload image to Google Drive. Check console for details.");
+    } finally {
+      setUploading(false);
+    }
   }
 
   return (
     <div className="overlay">
-      <div className="form-modal">
-        <button className="close-button" onClick={onClose}><X/></button>
-        <span className="eyebrow">New artwork</span>
-        <h2>Add a painting</h2>
-        <div className="upload-zone">
-          {form.image ? <img src={form.image} alt="Preview"/> : <><ImagePlus size={30}/><span>Choose artwork photo</span></>}
-          <input type="file" accept="image/*" onChange={handleFile}/>
-        </div>
-        <label>Title<input value={form.title} onChange={e => setForm({...form,title:e.target.value})} placeholder="e.g. Moonlit Garden"/></label>
-        <label>Short description<textarea rows="3" value={form.description} onChange={e => setForm({...form,description:e.target.value})} placeholder="A short story about this painting..."/></label>
-        <label>Price (₹)<input type="number" value={form.price} onChange={e => setForm({...form,price:e.target.value})} placeholder="2500"/></label>
-        <label className="checkbox"><input type="checkbox" checked={form.sold} onChange={e => setForm({...form,sold:e.target.checked})}/> Mark as sold out</label>
-        <button className="primary-button wide" disabled={!form.image || !form.title} onClick={() => onSave(form)}>Publish artwork</button>
+      <div className="form-modal animate-in">
+        <h2>Add New Artwork</h2>
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label>Artwork Title</label>
+            <input 
+              type="text" 
+              value={title} 
+              onChange={e => setTitle(e.target.value)} 
+              required 
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Description</label>
+            <textarea 
+              value={description} 
+              onChange={e => setDescription(e.target.value)} 
+              required 
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Price (₹)</label>
+            <input 
+              type="number" 
+              value={price} 
+              onChange={e => setPrice(e.target.value)} 
+              required 
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Select Image File</label>
+            <input 
+              type="file" 
+              accept="image/*" 
+              onChange={e => setFile(e.target.files[0])} 
+              required 
+            />
+          </div>
+
+          <div className="form-actions">
+            <button type="button" onClick={onClose} disabled={uploading}>Cancel</button>
+            <button type="submit" className="primary-button" disabled={uploading}>
+              {uploading ? "Uploading to Drive..." : "Save Artwork"}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
@@ -324,13 +408,15 @@ function AdminBar({ onAddCategory }) {
   const [description, setDescription] = useState("");
   return (
     <div className="admin-bar">
-      <span><Pencil size={15}/> Admin mode — changes are saved in this browser.</span>
-      <button onClick={() => setOpen(!open)}><Plus size={15}/> New category</button>
-      {open && <div className="mini-form">
-        <input value={name} onChange={e=>setName(e.target.value)} placeholder="Category name"/>
-        <input value={description} onChange={e=>setDescription(e.target.value)} placeholder="Short description"/>
-        <button onClick={() => {onAddCategory(name,description);setName("");setDescription("");setOpen(false)}}>Create</button>
-      </div>}
+      <span><Pencil size={14}/> Curator Mode Active — changes persist locally.</span>
+      <button onClick={() => setOpen(!open)}><Plus size={14}/> New Collection</button>
+      {open && (
+        <div className="mini-form animate-in">
+          <input value={name} onChange={e=>setName(e.target.value)} placeholder="Collection Name"/>
+          <input value={description} onChange={e=>setDescription(e.target.value)} placeholder="Short Subtitle"/>
+          <button onClick={() => {onAddCategory(name,description);setName("");setDescription("");setOpen(false)}}>Create</button>
+        </div>
+      )}
     </div>
   );
 }
@@ -340,20 +426,20 @@ function LoginModal({ onClose, onSuccess }) {
   const [error, setError] = useState("");
   function login() {
     if (password === DEMO_ADMIN_PASSWORD) onSuccess();
-    else setError("Incorrect password.");
+    else setError("Incorrect studio password.");
   }
   return (
     <div className="overlay">
-      <div className="login-modal">
-        <button className="close-button" onClick={onClose}><X/></button>
-        <div className="login-icon"><Sparkles/></div>
-        <span className="eyebrow">Private studio</span>
-        <h2>Admin access</h2>
-        <p>Sign in to manage categories and artworks.</p>
-        <input autoFocus type="password" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>e.key==="Enter"&&login()} placeholder="Admin password"/>
+      <div className="login-modal animate-in">
+        <button className="close-button" onClick={onClose}><X size={18}/></button>
+        <div className="login-icon"><Sparkles size={20}/></div>
+        <span className="eyebrow">Restricted Access</span>
+        <h2>Curator Login</h2>
+        <p>Enter your password to manage gallery collections and artworks.</p>
+        <input autoFocus type="password" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>e.key==="Enter"&&login()} placeholder="Password"/>
         {error && <small className="error">{error}</small>}
-        <button className="primary-button wide" onClick={login}>Enter studio <ArrowLeft className="flip" size={17}/></button>
-        <small className="demo-hint">Demo password: <b>{DEMO_ADMIN_PASSWORD}</b></small>
+        <button className="primary-button wide" onClick={login}>Enter Studio</button>
+        <small className="demo-hint">For Password: <b>Contact to Admin</b></small>
       </div>
     </div>
   );
@@ -361,27 +447,83 @@ function LoginModal({ onClose, onSuccess }) {
 
 function ArtworkModal({ artwork, onClose }) {
   const [zoom, setZoom] = useState(1);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+
+  function handleWheel(e) {
+    e.preventDefault();
+    setZoom(prev => {
+      const next = prev + (e.deltaY < 0 ? 0.15 : -0.15);
+      const clamped = Math.min(Math.max(next, 1.0), 3.5);
+      if (clamped === 1.0) setPosition({ x: 0, y: 0 });
+      return clamped;
+    });
+  }
+
+  function handleMouseDown(e) {
+    if (zoom <= 1.0) return;
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
+  }
+
+  function handleMouseMove(e) {
+    if (!isDragging || zoom <= 1.0) return;
+    setPosition({
+      x: e.clientX - dragStart.x,
+      y: e.clientY - dragStart.y
+    });
+  }
+
+  function handleMouseUp() {
+    setIsDragging(false);
+  }
+
   return (
     <div className="overlay art-overlay" onClick={onClose}>
-      <div className="viewer" onClick={e=>e.stopPropagation()}>
-        <button className="close-button viewer-close" onClick={onClose}><X/></button>
-        <div className="viewer-stage">
-          <div className="easel">
-            <div className="frame">
-              <img src={artwork.image} alt={artwork.title} style={{transform:`scale(${zoom})`}}/>
-            </div>
-            <div className="easel-leg left"></div><div className="easel-leg right"></div><div className="easel-cross"></div>
+      <div className="viewer animate-in" onClick={e => e.stopPropagation()}>
+        <button type="button" className="close-button viewer-close" onClick={onClose}>
+          <X size={20} />
+        </button>
+        
+        <div 
+          className="viewer-stage" 
+          onWheel={handleWheel}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+          style={{ cursor: zoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'zoom-in' }}
+        >
+          <div className="gallery-framed-container">
+            <img 
+              src={artwork.image} 
+              alt={artwork.title} 
+              referrerPolicy="no-referrer"
+              style={{ 
+                transform: `scale(${zoom}) translate(${position.x / zoom}px, ${position.y / zoom}px)`,
+                transition: isDragging ? 'none' : 'transform 0.1s ease-out'
+              }} 
+            />
           </div>
         </div>
+
+        {/* Compact text bar occupying minimal height/space */}
         <div className="viewer-info">
-          <div><span className="eyebrow">Original artwork</span><h2>{artwork.title}</h2><p>{artwork.description}</p></div>
-          <div className="viewer-price">{artwork.sold ? <span className="sold-text">SOLD OUT</span> : `₹${Number(artwork.price || 0).toLocaleString("en-IN")}`}</div>
+          <div>
+            <h2>{artwork.title}</h2>
+            <p>{artwork.description}</p>
+          </div>
+          <div className="viewer-price">
+            {artwork.sold ? <span className="sold-text">SOLD OUT</span> : `₹${Number(artwork.price || 0).toLocaleString("en-IN")}`}
+          </div>
         </div>
+
         <div className="zoom-controls">
-          <button onClick={()=>setZoom(z=>Math.max(.7,z-.15))}><ZoomOut size={18}/></button>
-          <span>{Math.round(zoom*100)}%</span>
-          <button onClick={()=>setZoom(z=>Math.min(2.2,z+.15))}><ZoomIn size={18}/></button>
-          <button className="reset" onClick={()=>setZoom(1)}>Reset</button>
+          <button type="button" onClick={() => { setZoom(z => Math.max(1.0, z - 0.15)); if(zoom <= 1.15) setPosition({x:0, y:0}); }} title="Zoom out"><ZoomOut size={16}/></button>
+          <span>{Math.round(zoom * 100)}%</span>
+          <button type="button" onClick={() => setZoom(z => Math.min(3.5, z + 0.15))} title="Zoom in"><ZoomIn size={16}/></button>
+          <button type="button" className="reset" onClick={() => { setZoom(1); setPosition({ x: 0, y: 0 }); }}>Reset</button>
         </div>
       </div>
     </div>
