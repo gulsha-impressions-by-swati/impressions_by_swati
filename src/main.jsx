@@ -135,7 +135,7 @@ function App() {
     <div className="app">
       <header className="site-header">
         <div className="brand" onClick={() => setActiveCategory(null)}>
-          <img src="/logo.png" alt="Artist logo" />
+          <img src="./logo.png" alt="Artist logo" />
           <div className="brand-fallback">
             <span className="brand-script">Impressions By Swati</span>
             <span className="brand-sub">ORIGINAL FINE ART • EST. 1998</span>
