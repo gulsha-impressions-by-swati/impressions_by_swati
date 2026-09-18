@@ -24,21 +24,25 @@ export async function uploadArtworkToDrive(fileObject) {
 
     const response = await fetch(APPS_SCRIPT_URL, {
       method: "POST",
+      headers: {
+        "Content-Type": "text/plain;charset=utf-8", // Crucial for Google Apps Script CORS
+      },
       body: JSON.stringify(payload),
     });
 
     const textResponse = await response.text();
-    
+    console.log("Raw Apps Script Response:", textResponse); // Check your F12 Console if it fails!
+
     try {
       const result = JSON.parse(textResponse);
       if (result.url) {
-        return result.url; // This is the permanent Google Drive URL
+        return result.url;
       } else {
-        throw new Error(result.error || "Upload failed from server response.");
+        throw new Error(result.error || "Server returned an error.");
       }
     } catch (e) {
-      console.error("Non-JSON response received from Apps Script. Check deployment permissions (Who has access -> Anyone).", textResponse);
-      throw new Error("Failed to upload image: Server returned HTML instead of JSON.");
+      console.error("Failed to parse JSON response:", textResponse);
+      throw new Error("Apps Script returned non-JSON text. Check console.");
     }
 
   } catch (err) {
